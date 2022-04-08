@@ -1,6 +1,6 @@
 
 import './App.css';
-import { BrowserRouter as Router, Routes, Route, useParams } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react';
 import Welcome from './components/Welcome';
 import Forms from './components/Forms';
@@ -12,7 +12,6 @@ import SaveForm from './components/SaveForm';
 
 
 function App() {
-  let { id } = useParams();
   const { isAuthenticated } = useAuth0();
   return (
     <div className="App">
@@ -33,8 +32,8 @@ function App() {
         <Router>
           <Routes>
             <Route path="/" element={<LoginButton />} />
-            <Route path="/submitted" element={<Submitted />} />
-            <Route path="/response" element={<UserForm />} />
+            <Route path="/response/:global_id" element={<UserForm />} />
+            <Route path="/submitted/:global_id" element={<Submitted />} />
 
           </Routes>
         </Router>

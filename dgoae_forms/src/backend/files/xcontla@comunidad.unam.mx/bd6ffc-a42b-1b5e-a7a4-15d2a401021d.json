@@ -1,1 +1,0 @@
-{"document_name":"Un nuevo comienzo","document_description":"A ver que podemos hacer","questions":[{"questionText":"Contesta algo","questionType":"text","options":[{"optionText":"Nombre"}],"open":true,"require":false,"required":true},{"questionText":"Email","questionType":"radio","options":[{"optionText":"Email"}],"open":false,"required":true}]}

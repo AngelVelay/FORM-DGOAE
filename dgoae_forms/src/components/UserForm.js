@@ -1,41 +1,72 @@
 import React, { useEffect, useState } from 'react'
-import { Button, Typography} from '@material-ui/core'
-import { useNavigate } from 'react-router-dom'
+import { Button, Typography } from '@material-ui/core'
+import { useNavigate, useParams } from 'react-router-dom'
 import "./UserForm.css"
-import { useStateValue } from "./StateProvider"
 
 import axios from 'axios'
 
 function UserForm() {
-    var quest = [];
+
+
+    const { global_id } = useParams();
+
+    var [quest_excel, setColumn] = useState([]);
     var navigate = useNavigate();
     var [answer, setAnswer] = useState([]);
-    var [{ questions, doc_name, doc_desc }, dispatch] = useStateValue();
 
-    useEffect(
-        () => {
-            questions.map((q) => {
+
+    const [doc_name, setDocName] = useState("Untitled Document");
+    const [doc_desc, setDocDesc] = useState("Add Description");
+    const [questions, setQuestions] = useState([]);
+
+    useEffect(() => {
+
+        async function getForm() {
+          
+            var request = await axios.get(`http://localhost:9000/getform?global_id=${global_id}`);
+            var question_data = request.data.questions;
+            var doc_name = request.data.document_name;
+            var doc_desc = request.data.document_description;
+        
+            question_data.map((q, qindex) => {
+                
                 answer.push({
                     "question": q.questionText,
                     "answer": " "
                 })
-            })
 
-            questions.map((q, qindex) => {
-                quest.push({ "header": q.questionText, "key": q.questionText });
                 
-            })
 
-            console.log(answer);
-        }
-        , []);
-        
+            });
+    
+            question_data.map((q, qindex) => {
+                quest_excel.push({ "header": q.questionText, "key": q.questionText });
+                
+            });
+            
+            setDocName(doc_name);
+            setDocDesc(doc_desc);
+            setQuestions(question_data);
+            
+            console.log(doc_name, doc_desc); console.log(answer,quest_excel);
+
+                       
+        };
+
+
+        getForm();
+
+
+
+    }, []);
+
 
     var post_answer_data = {};
 
-    function select(que, option) {
+    function select(que, option, e) {
 
-        console.log(que, option);
+        setAnswer(answer);
+        console.log(que, option, e, answer);
 
         var k = answer.findIndex((ele) => (ele.question === que));
         answer[k].answer = option;
@@ -45,6 +76,7 @@ function UserForm() {
 
     function selectInput(que, option) {
 
+        setAnswer(answer);
         console.log(que, option);
         var k = answer.findIndex((ele) => (ele.question === que));
         answer[k].answer = option;
@@ -52,9 +84,10 @@ function UserForm() {
         console.log(answer);
     }
 
-    function selectCheck(e, que, option) {
+    function selectCheck(que, option, e) {
 
-        console.log(e,que, option);
+        setAnswer(answer);
+        console.log(e, que, option);
 
         var d = [];
         var k = answer.findIndex((ele) => (ele.question === que));
@@ -73,17 +106,23 @@ function UserForm() {
     }
 
     function submit() {
+
+        console.log(quest_excel, answer);
+
         answer.map((ele) => {
             post_answer_data[ele.question] = ele.answer;
         });
 
-        axios.post(`http://localhost:9000/student_response/${doc_name}`, {
-            "column": quest,
+        axios.post(`http://localhost:9000/student_response`, {
+            "global_id": global_id,
+            "column": quest_excel,
+            "doc_name": doc_name,
             "answer_data": [post_answer_data]
         })
 
-        navigate('/submitted')
+        navigate('/submitted/' + global_id);
     }
+    
 
     return (
         <div className='submit'>
@@ -95,55 +134,56 @@ function UserForm() {
                         <Typography style={{ fontSize: "15px" }}>{doc_desc}</Typography>
                     </div>
                     {
+                        questions.length > 0 ? (
+
                         questions.map((question, qindex) => (
                             <div className='user_form_questions' key={qindex}>
-                                <Typography style={{ fontSize: "15px", fontWeight: "400", letterSpacing: ".1px", lineHeight: "24px", paddingBottom: "8px" }}>
-                                    {qindex + 1}.{question.questionText}</Typography>
+                                <Typography style={{ fontSize: "15px", fontWeight: "600", letterSpacing: ".1px", lineHeight: "24px", paddingBottom: "8px" }}>
+                                    {qindex + 1}. {question.questionText}</Typography>
                                 {
-                                    question.options.map((ques, index) => (
-
+                                    question.options.map((option, index) => (
+                                        
                                         <div key={index} style={{ marginBottom: '5px' }}>
                                             <div style={{ display: 'flex' }}>
                                                 <div className='form_check'>
                                                     {
-                                                        ques.questionType !== "radio" ? (
-                                                            ques.questionType !== "text" ? (
+                                                        question.questionType !== "radio" ? (
+                                                            question.questionType !== "text" ? (
                                                                 <label>
                                                                     <input
-                                                                        type={question.questionType}
+                                                                        type="checkbox"
                                                                         name={qindex}
-                                                                        value={ques.optiontText}
+                                                                        value={option.optionText}
                                                                         className="form_check_input"
                                                                         required={question.required}
                                                                         style={{ marginLeft: "5px", marginRight: "5px" }}
-                                                                        onChange={(e) => { selectCheck(e.target.checked, question.questionText, ques.optiontText) }} />
-                                                                    {ques.optionText}
+                                                                        onChange={(e) => { selectCheck(question.questionText, option.optionText, e.target.checked ); }} />
+                                                                    {option.optionText}
 
-                                                                </label>) : (
+                                                                </label>) : ( 
                                                                 <label>
                                                                     <input
-                                                                        type={question.questionType}
+                                                                        type="text"
                                                                         name={qindex}
-                                                                        value={ques.optiontText}
-                                                                        className="form_check_input"
+                                                                        className="form_check_input_text"
                                                                         required={question.required}
                                                                         style={{ marginLeft: "5px", marginRight: "5px" }}
-                                                                        onChange={(e) => { selectInput(question.questionText, e.target.value) }}
-                                                                    />{ques.optionText}
+                                                                        onChange={(e) => { selectInput(question.questionText, e.target.value); }}
+                                                                    />{""}
                                                                 </label>
                                                             )) : (
 
 
                                                             <label>
                                                                 <input
-                                                                    type={question.questionType}
+                                                                    type="radio"
                                                                     name={qindex}
-                                                                    value={ques.optiontText}
+                                                                    value={option.optionText}
                                                                     className="form_check_input"
                                                                     required={question.required}
                                                                     style={{ marginLeft: "5px", marginRight: "5px" }}
-                                                                    onChange={(e) => { select(question.questionText, ques.optiontText) }}
-                                                                />{ques.optionText}
+                                                                    onChange={(e) => { select(question.questionText, option.optionText, e.target.value); }}
+                                                                />{option.optionText}
                                                             </label>
 
                                                         )}
@@ -153,14 +193,24 @@ function UserForm() {
                                     ))
                                 }
                             </div>
-                        ))}
+                        ))
+                    
+                        ) : (
+                            
+                            <div className='user_form_questions'>
+                                 <Typography style={{ fontSize: "24px", fontWeight: "400", letterSpacing: ".2px", lineHeight: "24px", paddingBottom: "8px" }}>
+                                    Checar con el propietario para la habilitación del cuestionario. 
+                                 </Typography>
+                            </div>
+                        )
+                    }
 
-                        <div className='user_form_submit'>
-                            <Button variant="contained" color="primary" onClick={submit} style={{fontSize:"14px"}}>Guardar</Button>
-                        </div>
-                        <div className='user_footer'>
-                                DGOAE-FORMS
-                        </div>
+                    <div className='user_form_submit'>
+                        <Button variant="contained" color="primary" onClick={submit} style={{ fontSize: "14px" }}>Guardar</Button>
+                    </div>
+                    <div className='user_footer'>
+                        DGOAE-FORMS
+                    </div>
                 </div>
             </div>
         </div>

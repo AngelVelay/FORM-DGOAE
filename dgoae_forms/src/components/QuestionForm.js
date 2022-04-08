@@ -11,13 +11,10 @@ import Select from '@material-ui/core/Select'
 import Switch from '@material-ui/core/Switch'
 import CheckboxIcon from '@material-ui/icons/CheckBox'
 import SubjectIcon from '@material-ui/icons/Subject'
-import MoreVertIcon from '@material-ui/icons/MoreVert'
 import { BsTrash, BsFileText, BsFile } from 'react-icons/bs'
 import { Icon, IconButton, MenuItem, Typography } from '@material-ui/core'
 import FilterNoneIcon from '@material-ui/icons/FilterNone'
 import AddCircleOutlineIcon from '@material-ui/icons/AddCircleOutline'
-import TextFieldsIcon from '@material-ui/icons/TextFields'
-import OnDemanandVideoIcon from '@material-ui/icons/OndemandVideo'
 import Accordion from '@material-ui/core/Accordion'
 import AccordionSummary from '@material-ui/core/AccordionSummary'
 import AccordionDetails from '@material-ui/core/AccordionDetails'
@@ -31,7 +28,6 @@ import DragIndicatorIcon from '@material-ui/icons/DragIndicator'
 
 
 import './QuestionForm.css'
-import { AiFillCode, AiTwotoneCustomerService } from 'react-icons/ai'
 import ShortText from '@material-ui/icons/ShortText'
 import { useAuth0 } from '@auth0/auth0-react';
 import { useNavigate } from "react-router-dom"
@@ -259,6 +255,10 @@ function QuestionForm() {
         }
 
         navigate(`/saveform/${id}`);
+    }  
+    
+    function regresarPrincipal(){
+        navigate("/");
     }
 
 
@@ -502,6 +502,10 @@ function QuestionForm() {
                     <hr />
                     <div className='save_form'>
                         <Button variant='contained' color='primary' onClick={commitToDB} style={{ fontSize: '14px' }}>Save</Button>
+                    </div>
+                    <br></br>
+                    <div className='save_form'>
+                        <Button variant='contained' color='secondary' onClick={regresarPrincipal} style={{ fontSize: '14px' }}>Regresar</Button>
                     </div>
                 </div>
             </div>

@@ -1,7 +1,6 @@
 
 const fs = require('fs');
 const express = require("express");
-
 const appback = express();
 
 var cors = require('cors'); // CORS -> Cross Origin Resource Sharing
@@ -22,11 +21,17 @@ const Excel = require('exceljs');
 
 const path = require("path");
 const { json } = require('express');
+const e = require('express');
+const { create } = require('domain');
+const { v4: uuidv4 } = require('uuid');
+const exportFromJSON = require('export-from-json');
 
 appback.get(`/data`, async (req, res) => {
     var docID = req.query.doc_id;
     var userID = req.query.username;
     var filename = `${docID}.json`;
+
+
 
     const diretoryPath = path.join(__dirname, '/files/', userID, '/', filename);
 
@@ -42,6 +47,7 @@ appback.get(`/data`, async (req, res) => {
         console.log(req.params.doc_id);
         res.send(ques_data);
     });
+    // });
 });
 
 
@@ -52,57 +58,128 @@ appback.get(`/get_all_filenames_by_user`, async (req, res) => {
     const directory = path.join(__dirname, '/files/', userID);
 
     if (!fs.existsSync(directory)) {
-        fs.mkdirSync(directory);
+        res.json([]);
+        return;
+        //fs.mkdirSync(directory);
     }
 
     var filenames = fs.readdirSync(directory);
-    
 
+    console.log(filenames);
     let js = [];
     filenames.forEach((f, index) => {
-        js.push({
-            filename: f,
-            name: JSON.parse(fs.readFileSync(directory + '/' + f)).document_name,
-            time: fs.statSync(directory + '/' + f).birthtimeMs
-        });
 
-        
+        if (f.endsWith(".json")) {
+
+            js.push({
+                filename: f,
+                name: JSON.parse(fs.readFileSync(directory + '/' + f)).document_name,
+                time: fs.statSync(directory + '/' + f).birthtimeMs
+            });
+        }
+
+
     });
 
     res.json(js);
 });
 
+/***/
 
 
+appback.get(`/getform`, async (req, res) => {
 
-appback.post('/student_response/:doc_id', (req, res) => {
-    var docs_data = req.body;
-    var name = req.params.doc_id;
-    var d = new Date();
-    let workbook = new Excel.Workbook();
-    var data = req.body.answer_data;
-    console.log(data);
-    let worksheet = workbook.addWorksheet(`${name}`);
 
-    worksheet.columns = [{ header: "Time Stamp", "key": "datetime" }, ...docs_data.column];
-    worksheet.columns.forEach(column => {
-        column.width = column.header.length < 12 ? 12 : column.header.length
-    })
+    var globalID = req.query.global_id;
+    console.log("Loading form " + globalID + " ...");
+    var filenameAll = `allaccess.json`;
+    const diretoryPath = path.join(__dirname, '/files/');
 
-    worksheet.getRow(1).font = { bold: true };
+    console.log("Leyendo All Access");
+    fs.readFile(diretoryPath + filenameAll, (err, data) => {
 
-    data.forEach((e, index) => {
-        const rowIndex = index + 2;
-        worksheet.addRow({
-            d, ...e
-        })
+        var file = "";
+        var user = "";
+        var isEnabled = false;
+        if (err) {
+
+            console.log('File Allaccess not found')
+            throw err;
+        }
+        let accessfile = JSON.parse(data);
+        accessfile.forms.forEach(element => {
+            if (globalID === element.gid) {
+                user = element.email;
+                file = element.file;
+                isEnabled = element.enable;
+            }
+
+        });
+
+        if(!isEnabled){
+            res.send({document_name:globalID,document_description:"Cuestionario no habilitado",questions:[]});
+            return;
+        }
+        var filename = `${file}.json`;
+        const formPath = path.join(__dirname, '/files/', user, '/', filename);
+
+
+        fs.readFile(formPath, (err, data) => {
+            if (err) {
+                console.log('Form not found')
+                throw err;
+            }
+            let ques_data = JSON.parse(data);
+
+            console.log("Loaded form " + globalID);
+            res.send(ques_data);
+        });
+
     });
 
-    workbook.xlsx.writeFile(`${name}.xlsx`)
 });
 
 
-appback.post(`/add_question`, (req, res) => {
+appback.get(`/getGlobalID`, async (req, res) => {
+
+
+    var fid = req.query.id;
+    console.log("Geting gid " + fid + " ...");
+    var filenameAll = `allaccess.json`;
+    const diretoryPath = path.join(__dirname, '/files/');
+
+    console.log("Leyendo All Access");
+    fs.readFile(diretoryPath + filenameAll, (err, data) => {
+
+        var globalID = "";
+        var user = "";
+
+        if (err) {
+            console.log('File Allaccess not found')
+            throw err;
+        }
+        let accessfile = JSON.parse(data);
+
+        accessfile.forms.forEach(element => {
+            if (fid === element.file) {
+                user = element.email;
+                globalID = element.gid;
+
+
+
+            }
+
+        });
+        console.log({ "gid": globalID })
+        res.send({ "gid": globalID });
+
+
+
+    });
+
+});
+
+appback.post(`/add_question`, async (req, res) => {
 
 
     console.log("ADDING QUESTION");
@@ -112,6 +189,37 @@ appback.post(`/add_question`, (req, res) => {
     if (!fs.existsSync(directory)) {
         fs.mkdirSync(directory);
     }
+
+    var filenameAll = `allaccess.json`;
+    const accessDiretoryPath = path.join(__dirname, '/files/');
+
+    let find_eleme = false;
+    let nelem = 1;
+
+    let dataAccess = fs.readFileSync(accessDiretoryPath + filenameAll);
+    let accessfile = JSON.parse(dataAccess);
+    console.log("ACCESS INFO: ", accessfile);
+    accessfile.forms.forEach(element => {
+
+        if (docID === element.file)
+            find_eleme = true;
+        nelem++;
+    });
+    console.log(accessfile, nelem, find_eleme);
+
+    if (!find_eleme) {
+        let new_data_elem = {};
+        new_data_elem.email = userID;
+        new_data_elem.gid = uuidv4();
+        new_data_elem.file = docID;
+        new_data_elem.enable = false;
+        new_data_elem.filename = nelem;
+        accessfile.forms.push(new_data_elem);
+        let wdata = JSON.stringify(accessfile);
+        fs.writeFileSync(accessDiretoryPath + filenameAll, wdata);
+    }
+
+    console.log("fin");
     console.log(directory);
     var docs_data = req.body;
     console.log(docs_data, docID);
@@ -120,7 +228,285 @@ appback.post(`/add_question`, (req, res) => {
     fs.writeFileSync(`${directory}/${docID}.json`, data);
 
     res.send();
+
 });
+
+appback.post('/student_response', async (req, res) => {
+
+    var docs_data = req.body;
+    var globalID = docs_data.global_id;
+
+    var filenameAll = `allaccess.json`;
+
+    const diretoryPath = path.join(__dirname, '/files/');
+
+    console.log("Dir  " + diretoryPath + filenameAll);
+    var exelPath = "";
+
+    var file = "";
+    var user = "";
+    var id = "";
+
+    fs.readFile(diretoryPath + filenameAll, (err, data) => {
+
+
+        if (err) {
+            console.log('File not found allaccess')
+            throw err;
+        }
+        let accessfile = JSON.parse(data);
+        accessfile.forms.forEach(element => {
+
+            console.log(element);
+            if (globalID === element.gid) {
+                user = element.email;
+                file = element.filename;
+                id = element.file;
+            }
+
+        });
+
+        var filename = `${file}.json`;
+        console.log("fileeee", filename);
+
+        console.log("path", exelPath);
+        const fdirectory = path.join(path.join(__dirname, '/files/', user, '/responses'));
+        if (!fs.existsSync(fdirectory)) {
+            fs.mkdirSync(fdirectory);
+        }
+
+        fs.readFile(path.join(__dirname, '/files/', user, '/responses/', filename), (err, data) => {
+
+            if (err) {
+                console.log(err);
+                console.log("Creating File");
+                let data = JSON.stringify({ responses: docs_data.answer_data, columns: docs_data.column, doc_name: docs_data.doc_name });
+                fs.writeFileSync(path.join(__dirname, '/files/', user, '/responses/', filename), data);
+                res.send();
+                return;
+            }
+            let ques_data = JSON.parse(data);
+            ques_data.responses.push(docs_data.answer_data[0]);
+            let jsondata = JSON.stringify(ques_data);
+            fs.writeFileSync(path.join(__dirname, '/files/', user, '/responses/', filename), jsondata);
+
+            res.send();
+        });
+    });
+
+
+});
+
+function isObject(obj)
+{
+    return obj !== undefined && obj !== null && obj.constructor == Object;
+}
+
+appback.get(`/getExcel`, async (req, res) => {
+
+    var fid = req.query.id;
+    console.log("Geting gid " + fid + " ...");
+    var filenameAll = `allaccess.json`;
+    const diretoryPath = path.join(__dirname, '/files/');
+
+    console.log("Leyendo All Access");
+    fs.readFile(diretoryPath + filenameAll, (err, data) => {
+
+        var globalID = "";
+        var user = "";
+        var filename = "";
+
+        if (err) {
+            console.log('File Allaccess not found')
+            throw err;
+        }
+        let accessfile = JSON.parse(data);
+        accessfile.forms.forEach(element => {
+            if (fid === element.file) {
+                user = element.email;
+                globalID = element.gid;
+                filename = element.filename;
+            }
+
+        });
+
+        fs.readFile(path.join(__dirname, '/files/', user, '/responses/', filename + ".json"), (err, data) => {
+
+            if (err) {
+                console.log("0 responses", data); res.send(null); return;
+            }
+           
+            let json_responses = JSON.parse(data);
+
+            res.json(json_responses.responses);
+
+        });
+
+
+    });
+});
+
+
+        /*
+        let workbook = new Excel.Workbook();
+        var data = req.body.answer_data;
+        console.log(data);
+        let worksheet = workbook.addWorksheet(`${name}`);
+    
+        worksheet.columns = [{ header: "Time Stamp", key: "datetime" }, ...docs_data.column];
+        worksheet.columns.forEach(column => {
+            column.width = column.header.length < 12 ? 12 : column.header.length
+        })
+    
+        worksheet.getRow(1).font = { bold: true };
+       
+    
+        data.forEach((e, index) => {
+            const rowIndex = index + 2;
+            worksheet.addRow({
+                d, ...e
+            })
+        });
+    
+        workbook.xlsx.writeFile(`${name}.xlsx`)
+        
+            const result = exportFromJSON({
+               data: response_array,
+               fileName: fileName,
+               exportType:  exportType,
+               beforeTableEncode: rows => rows.sort((p, c) => p.fieldName.localeCompare(c.fieldName)),
+                processor(content, type, fileName) {
+                    switch (type) {
+                        case 'txt':
+                            res.setHeader('Content-Type', 'text/plain')
+                            break
+                        case 'css':
+                            res.setHeader('Content-Type', 'text/css')
+                            break
+                        case 'html':
+                            res.setHeader('Content-Type', 'text/html')
+                            break
+                        case 'json':
+                            res.setHeader('Content-Type', 'text/plain')
+                            break
+                        case 'csv':
+                            res.setHeader('Content-Type', 'text/csv')
+                            break
+                        case 'xls':
+                            res.setHeader('Content-Type', 'application/vnd.ms-excel')
+                            break
+                    }
+                    res.setHeader('Content-disposition', 'attachment;filename=' + fileName)
+                    return content;
+                }
+            })
+            console.log(result);
+            res.write(result)
+            res.end()
+        */
+
+appback.post(`/enable_disable`, async (req, res) => {
+
+    var docs_data = req.body;
+    var fid = docs_data.fid;
+    var isEnabled = docs_data.enabled;
+
+    var filenameAll = `allaccess.json`;
+    const diretoryPath = path.join(__dirname, '/files/');
+
+    console.log("Leyendo All Access");
+    
+    
+    let accessfile =  JSON.parse(fs.readFileSync(diretoryPath + filenameAll));
+    console.log(accessfile);
+    accessfile.forms.map(element => {
+        if (fid === element.file) {
+            element.enable = isEnabled;
+        }
+
+    });
+
+    console.log(accessfile);
+    
+    let jsondata = JSON.stringify(accessfile);
+    fs.writeFileSync(diretoryPath + filenameAll, jsondata);
+    res.send();
+})
+
+appback.get(`/getResponses`, async (req, res) => {
+
+
+    var fid = req.query.id;
+    console.log("Geting gid " + fid + " ...");
+    var filenameAll = `allaccess.json`;
+    const diretoryPath = path.join(__dirname, '/files/');
+
+    console.log("Leyendo All Access");
+    fs.readFile(diretoryPath + filenameAll, (err, data) => {
+
+        var globalID = "";
+        var user = "";
+        var filename = "";
+        var isEnabled = false;
+        if (err) {
+            console.log('File Allaccess not found')
+            throw err;
+        }
+        let accessfile = JSON.parse(data);
+        accessfile.forms.forEach(element => {
+            if (fid === element.file) {
+                user = element.email;
+                globalID = element.gid;
+                filename = element.filename;
+                isEnabled = element.enable;
+            }
+        });
+
+        var json_responses = { "rsize": 0, "resp": [], "columns": [] };
+        let s_response = JSON.parse(fs.readFileSync(path.join(__dirname, '/files/', user, '/responses/', filename + ".json")));
+        let s_quest = JSON.parse(fs.readFileSync(path.join(__dirname, '/files/', user, '/', fid + ".json")));
+
+        
+        console.log("RESPUESTAS  " , s_response);
+        
+        console.log("PREGUNTAS  ",s_quest);
+
+        json_responses.rsize = s_response.responses.length;
+        json_responses.resp = s_response.responses;
+        json_responses.columns = s_response.columns;
+        json_responses.doc_name = s_response.doc_name;
+        json_responses.questions = s_quest;
+        json_responses.isEnabled = isEnabled;
+        res.send(json_responses);
+
+        /*fs.readFile(path.join(__dirname, '/files/', user, '/responses/', filename + ".json"), (err, data) => {
+
+            if (err) {
+                console.log("0 responses", data);
+
+                res.send(json_responses);
+
+                return;
+            }
+
+            let s_response = JSON.parse(data);
+
+            json_responses.rsize = s_response.responses.length;;
+            json_responses.resp = s_response.responses;
+            json_responses.columns = s_response.columns;
+            json_responses.doc_name = s_response.doc_name;
+
+            console.log("Responses to go", json_responses);
+
+
+
+            res.send(json_responses);
+        });*/
+
+    });
+
+});
+
 
 
 appback.listen(9000, () => { console.log("Express server is running port number 9000") })
