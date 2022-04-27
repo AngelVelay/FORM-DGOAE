@@ -28,6 +28,7 @@ function ViewUserForm() {
             })
 
             console.log(answer);
+            console.log( questions, doc_name, doc_desc);
         }, [])
 
     function select(que, option) {

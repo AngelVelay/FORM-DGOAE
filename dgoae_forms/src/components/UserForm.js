@@ -47,10 +47,7 @@ function UserForm() {
             setDocName(doc_name);
             setDocDesc(doc_desc);
             setQuestions(question_data);
-            
-            console.log(doc_name, doc_desc); console.log(answer,quest_excel);
-
-                       
+                                   
         };
 
 

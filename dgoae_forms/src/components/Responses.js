@@ -88,11 +88,13 @@ function Responses() {
                             </div>
                         </div>
                         <br></br>
+                        {/*
                         <div style={{ marginBottom: "5px" }}>
                             <div style={{ display: 'flex', fontSize: "12px", justifyContent: "flex-end" }}>
                                 Aceptando Respuestas <Switch color='primary' size="small" onChange={enableForm} />
                             </div>
                         </div>
+                        */}
                     </div>
 
                 </div>

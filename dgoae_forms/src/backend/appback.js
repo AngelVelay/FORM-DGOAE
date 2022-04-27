@@ -1,6 +1,8 @@
 
 const fs = require('fs');
 const express = require("express");
+const path = require("path");
+const { v4: uuidv4 } = require('uuid');
 const appback = express();
 
 var cors = require('cors'); // CORS -> Cross Origin Resource Sharing
@@ -17,21 +19,11 @@ appback.use(function (req, res, next) {
 
 });
 
-const Excel = require('exceljs');
-
-const path = require("path");
-const { json } = require('express');
-const e = require('express');
-const { create } = require('domain');
-const { v4: uuidv4 } = require('uuid');
-const exportFromJSON = require('export-from-json');
-
 appback.get(`/data`, async (req, res) => {
     var docID = req.query.doc_id;
     var userID = req.query.username;
+
     var filename = `${docID}.json`;
-
-
 
     const diretoryPath = path.join(__dirname, '/files/', userID, '/', filename);
 
@@ -44,10 +36,9 @@ appback.get(`/data`, async (req, res) => {
             throw err;
         }
         let ques_data = JSON.parse(data);
-        console.log(req.params.doc_id);
+        console.log(req.params.doc_id, ques_data);
         res.send(ques_data);
     });
-    // });
 });
 
 
@@ -116,8 +107,8 @@ appback.get(`/getform`, async (req, res) => {
 
         });
 
-        if(!isEnabled){
-            res.send({document_name:globalID,document_description:"Cuestionario no habilitado",questions:[]});
+        if (!isEnabled) {
+            res.send({ document_name: globalID, document_description: "Cuestionario no habilitado", questions: [] });
             return;
         }
         var filename = `${file}.json`;
@@ -297,9 +288,12 @@ appback.post('/student_response', async (req, res) => {
 
 });
 
-function isObject(obj)
-{
+function isObject(obj) {
     return obj !== undefined && obj !== null && obj.constructor == Object;
+}
+
+function isEmptyObject(obj) {
+    return !Object.keys(obj).length;
 }
 
 appback.get(`/getExcel`, async (req, res) => {
@@ -335,7 +329,7 @@ appback.get(`/getExcel`, async (req, res) => {
             if (err) {
                 console.log("0 responses", data); res.send(null); return;
             }
-           
+
             let json_responses = JSON.parse(data);
 
             res.json(json_responses.responses);
@@ -345,65 +339,6 @@ appback.get(`/getExcel`, async (req, res) => {
 
     });
 });
-
-
-        /*
-        let workbook = new Excel.Workbook();
-        var data = req.body.answer_data;
-        console.log(data);
-        let worksheet = workbook.addWorksheet(`${name}`);
-    
-        worksheet.columns = [{ header: "Time Stamp", key: "datetime" }, ...docs_data.column];
-        worksheet.columns.forEach(column => {
-            column.width = column.header.length < 12 ? 12 : column.header.length
-        })
-    
-        worksheet.getRow(1).font = { bold: true };
-       
-    
-        data.forEach((e, index) => {
-            const rowIndex = index + 2;
-            worksheet.addRow({
-                d, ...e
-            })
-        });
-    
-        workbook.xlsx.writeFile(`${name}.xlsx`)
-        
-            const result = exportFromJSON({
-               data: response_array,
-               fileName: fileName,
-               exportType:  exportType,
-               beforeTableEncode: rows => rows.sort((p, c) => p.fieldName.localeCompare(c.fieldName)),
-                processor(content, type, fileName) {
-                    switch (type) {
-                        case 'txt':
-                            res.setHeader('Content-Type', 'text/plain')
-                            break
-                        case 'css':
-                            res.setHeader('Content-Type', 'text/css')
-                            break
-                        case 'html':
-                            res.setHeader('Content-Type', 'text/html')
-                            break
-                        case 'json':
-                            res.setHeader('Content-Type', 'text/plain')
-                            break
-                        case 'csv':
-                            res.setHeader('Content-Type', 'text/csv')
-                            break
-                        case 'xls':
-                            res.setHeader('Content-Type', 'application/vnd.ms-excel')
-                            break
-                    }
-                    res.setHeader('Content-disposition', 'attachment;filename=' + fileName)
-                    return content;
-                }
-            })
-            console.log(result);
-            res.write(result)
-            res.end()
-        */
 
 appback.post(`/enable_disable`, async (req, res) => {
 
@@ -415,9 +350,9 @@ appback.post(`/enable_disable`, async (req, res) => {
     const diretoryPath = path.join(__dirname, '/files/');
 
     console.log("Leyendo All Access");
-    
-    
-    let accessfile =  JSON.parse(fs.readFileSync(diretoryPath + filenameAll));
+
+
+    let accessfile = JSON.parse(fs.readFileSync(diretoryPath + filenameAll));
     console.log(accessfile);
     accessfile.forms.map(element => {
         if (fid === element.file) {
@@ -427,7 +362,7 @@ appback.post(`/enable_disable`, async (req, res) => {
     });
 
     console.log(accessfile);
-    
+
     let jsondata = JSON.stringify(accessfile);
     fs.writeFileSync(diretoryPath + filenameAll, jsondata);
     res.send();
@@ -463,45 +398,36 @@ appback.get(`/getResponses`, async (req, res) => {
         });
 
         var json_responses = { "rsize": 0, "resp": [], "columns": [] };
-        let s_response = JSON.parse(fs.readFileSync(path.join(__dirname, '/files/', user, '/responses/', filename + ".json")));
+        let s_response = {};
         let s_quest = JSON.parse(fs.readFileSync(path.join(__dirname, '/files/', user, '/', fid + ".json")));
 
-        
-        console.log("RESPUESTAS  " , s_response);
-        
-        console.log("PREGUNTAS  ",s_quest);
+        fs.readFile(
+            path.join(__dirname, '/files/', user, '/responses/', filename + ".json"),
+            (err, data) => {
+                if (err) {
+                    console.log('File Responeses not found')
+                    res.send(json_responses);
+                    return;
+                }
+                s_response = JSON.parse(data)
 
-        json_responses.rsize = s_response.responses.length;
-        json_responses.resp = s_response.responses;
-        json_responses.columns = s_response.columns;
-        json_responses.doc_name = s_response.doc_name;
-        json_responses.questions = s_quest;
-        json_responses.isEnabled = isEnabled;
-        res.send(json_responses);
+                if (isEmptyObject(s_response)) {
+                    res.send(json_responses);
+                    return;
+                }
 
-        /*fs.readFile(path.join(__dirname, '/files/', user, '/responses/', filename + ".json"), (err, data) => {
+                console.log("RESPUESTAS  ", s_response);
 
-            if (err) {
-                console.log("0 responses", data);
+                console.log("PREGUNTAS  ", s_quest);
 
+                json_responses.rsize = s_response.responses.length;
+                json_responses.resp = s_response.responses;
+                json_responses.columns = s_response.columns;
+                json_responses.doc_name = s_response.doc_name;
+                json_responses.questions = s_quest;
+                json_responses.isEnabled = isEnabled;
                 res.send(json_responses);
-
-                return;
-            }
-
-            let s_response = JSON.parse(data);
-
-            json_responses.rsize = s_response.responses.length;;
-            json_responses.resp = s_response.responses;
-            json_responses.columns = s_response.columns;
-            json_responses.doc_name = s_response.doc_name;
-
-            console.log("Responses to go", json_responses);
-
-
-
-            res.send(json_responses);
-        });*/
+            });
 
     });
 

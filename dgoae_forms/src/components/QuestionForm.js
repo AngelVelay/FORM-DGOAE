@@ -62,6 +62,7 @@ function QuestionForm() {
         async function data_adding() {
             var request = await axios.get(`http://localhost:9000/data?username=${user.name}&doc_id=${id}`);
             var question_data = request.data.questions;
+           //var question_data = request.data;
             console.log(question_data);
 
             var doc_name = request.data.document_name;
@@ -263,6 +264,9 @@ function QuestionForm() {
 
 
     function questionUI() {
+
+        console.log("questions", questions);    
+
         return questions.map((ques, i) => (
             <Draggable key={i} draggableId={i + 'id'} index={i}>
                 {(provided, snapshot) => (
@@ -453,9 +457,6 @@ function QuestionForm() {
                                                         <IconButton onClick={addMoreQuestionField} >
                                                             <AddCircleOutlineIcon className='edit' />
                                                         </IconButton>
-                                                        {/*<OnDemanandVideoIcon className='edit' />
-                                                        <CropOriginalIcon className='edit' />
-                                                        <TextFieldsIcon className='edit' />*/}
 
                                                     </div>)
                                                     : ""}
