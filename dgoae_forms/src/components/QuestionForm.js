@@ -62,7 +62,7 @@ function QuestionForm() {
         async function data_adding() {
             var request = await axios.get(`http://localhost:9000/data?username=${user.name}&doc_id=${id}`);
             var question_data = request.data.questions;
-           //var question_data = request.data;
+            //var question_data = request.data;
             console.log(question_data);
 
             var doc_name = request.data.document_name;
@@ -256,16 +256,14 @@ function QuestionForm() {
         }
 
         navigate(`/saveform/${id}`);
-    }  
-    
-    function regresarPrincipal(){
+    }
+
+    function regresarPrincipal() {
         navigate("/");
     }
 
 
     function questionUI() {
-
-        console.log("questions", questions);    
 
         return questions.map((ques, i) => (
             <Draggable key={i} draggableId={i + 'id'} index={i}>
@@ -308,7 +306,7 @@ function QuestionForm() {
                                                                                     letterSpacing: ".2px", lineHeight: "20px",
                                                                                     color: "#202124"
                                                                                 }}>
-                                                                                    { (ques.questionType !== "text") ?  op.optionText : ""}
+                                                                                    {(ques.questionType !== "text") ? op.optionText : ""}
                                                                                 </Typography>
                                                                             } />
                                                                     </div>
@@ -346,7 +344,7 @@ function QuestionForm() {
                                                                         <ShortText style={{ marginRight: "10px" }} />
                                                                 }
                                                                 <div>
-                                                                    <input type="text" className='text_input' placeholder="option" value={(ques.questionType !== "text") ?  op.optionText : ""} onChange={(e) => changeOptionValue(e.target.value, i, j)}></input>
+                                                                    <input type="text" className='text_input' placeholder="option" value={(ques.questionType !== "text") ? op.optionText : ""} onChange={(e) => changeOptionValue(e.target.value, i, j)}></input>
                                                                 </div>
                                                                 {/*<CropOriginalIcon style={{ color: "#5f6368" , marginRight:"10px"}} />*/}
                                                                 <IconButton aria-label='delete' onClick={() => { removeOption(i, j) }}>
@@ -370,7 +368,7 @@ function QuestionForm() {
                                                                         label={
                                                                             <div>
                                                                                 {/*<input type="text" className='text_input' style={{ fontSize: "13px", width: "150px" }} placeholder="Add other"></input>*/}
-                                                                                <Button size="small" style={{ textTransform: 'none', color: "#4285f4", fontSize: "13px", fontWeight: "600"}} onClick={() => { addOption(i) }}>Add Option</Button>
+                                                                                <Button size="small" style={{ textTransform: 'none', color: "#4285f4", fontSize: "13px", fontWeight: "600" }} onClick={() => { addOption(i) }}>Add Option</Button>
                                                                             </div>
                                                                         }
 
@@ -401,7 +399,7 @@ function QuestionForm() {
                                                                     <span style={{ color: "#5f6368", fontSize: "13px" }}>Required</span>
                                                                     <Switch name='checked' color='primary' ></Switch>
                                                                 </IconButton>
-                                                               {/*} <IconButton>
+                                                                {/*} <IconButton>
                                                                     <MoreVertIcon />
                                                                 </IconButton>*/}
                                                             </div>
@@ -500,11 +498,12 @@ function QuestionForm() {
                             )}
                         </Droppable>
                     </DragDropContext>
-                    <hr />
+                    <br></br>
                     <div className='save_form'>
                         <Button variant='contained' color='primary' onClick={commitToDB} style={{ fontSize: '14px' }}>Save</Button>
                     </div>
                     <br></br>
+                    <hr />
                     <div className='save_form'>
                         <Button variant='contained' color='secondary' onClick={regresarPrincipal} style={{ fontSize: '14px' }}>Regresar</Button>
                     </div>

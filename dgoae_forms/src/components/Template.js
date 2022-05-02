@@ -30,12 +30,7 @@ function Template() {
         }];
         try {
             const response = await axios(
-                /*
-                `http://localhost:9000/add_question?username=${user.name}&doc_id=${id_}`,{
-                "document_name": "Untilted Form",
-                "doc_desc": "Add Description",
-                "questions": question_list
-                }*/
+ 
                 {
                     url: `http://localhost:9000/add_question?username=${user.name}&doc_id=${id_}`,
                     method: 'post',
@@ -85,8 +80,8 @@ function Template() {
                         'Content-Type': 'application/json',
                     },
                     data: {
-                        "document_name": "Untilted Form",
-                        "document_description": "Add Description",
+                        "document_name": "Registro Simple",
+                        "document_description": "La Dirección General de Orientación y Atención Educativa (en adelante DGOAE) de la Universidad Nacional Autónoma de México, por conducto de la Dirección de Orientación Educativa, Dirección de Apoyo Técnico y el Centro de Orientación Educativa y el Departamento de Orientación Especializada, recaba datos personales para el registro y administración de solitudes de servicios y programas administrados por la DGOAE. Se realizarán transferencias de datos personales de conformidad con las finalidades establecidas por cada programa de orientación educativa por esta área universitaria. Podrá ejercer sus derechos ARCO en la Unidad de Transparencia de la UNAM, o a través de la Plataforma Nacional de Transparencia (http://www.plataformadetransparencia.org.mx/). El aviso de privacidad integral se puede consultar en la sección Aviso de Privacidad de nuestro sitio web http://www.dgoae.unam.mx/",
                         "questions": question_list
                     }
                 })

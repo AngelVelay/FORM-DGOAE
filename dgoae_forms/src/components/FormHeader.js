@@ -44,11 +44,7 @@ function FormHeader() {
         <div className='form_header'>
             <div className='form_header_left'>
                 <img src={formimage} style={{ height: "45px", width: "auto" }} />
-                {/*<label placeholder="Untilted Form" className="form_name" value={document_name} />
-                <IoMdFolderOpen className='form_header_icon' style={{ marginRight: "10px" }}></IoMdFolderOpen>
-                <FiStar className='form_header_icon' style={{ marginRight: "10px" }}></FiStar>
-                <span style={{ fontSize: "12px", fontWeight: "600" }}>All changes saved in Drive</span>*/}
-
+                
             </div>
             <div className='form_header_right'>
                 <IconButton>
