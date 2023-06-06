@@ -1,6 +1,6 @@
 export const initialState =
 {
-    questions:[{questionText: "Pregunta 1", questionType:"radio", options:[{optionText:"Opcion 1"}], open:true, required:false}],
+    questions:[{questionText: "Pregunta 1", questionType:"radio", options:[{optionText:"Opcion 1"}], open:true, required:false,isEncrypt: false}],
     questionType:"radio",
     document_name:"Untitled Form",
     document_description:"add the description"

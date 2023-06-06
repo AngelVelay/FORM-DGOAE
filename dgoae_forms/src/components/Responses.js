@@ -24,12 +24,14 @@ function Responses() {
         async function getReponses() {
 
             var request = await axios.get(`http://localhost:9000/getResponses?id=${id}`);
+            console.log(request);
 
             responses = request.data.resp;
 
             rsize = request.data.rsize;
             rcols = request.data.columns;
             dname = request.data.doc_name;
+            console.log(dname)
 
             setResponses(responses);
             setRSize(rsize);
@@ -88,7 +90,7 @@ function Responses() {
                             </div>
                         </div>
                         <br></br>
-                        {/*
+{/*                         
                         <div style={{ marginBottom: "5px" }}>
                             <div style={{ display: 'flex', fontSize: "12px", justifyContent: "flex-end" }}>
                                 Aceptando Respuestas <Switch color='primary' size="small" onChange={enableForm} />
@@ -134,6 +136,7 @@ function Responses() {
 
                         }
                         <div className="pagination-txt">Mostrando {state.page + 1} de {state.perPage} páginas </div>
+                        <br/><br/>
                         <div className="float-end">
                             <ReactPaginate
                                 previousLabel={'<<'}

@@ -104,9 +104,9 @@ function Summary() {
 
                         </div>
                         <br></br>
-                        <div style={{ marginBottom: "5px" }}>
+                        <div style={{ margin: "5px" }}>
                             <span>Descargar Excel </span>
-                            <Button variant="warning" color="primary" onClick={(e) => descargaExcel()}style={{ fontSize: '12px' }}>Descargar</Button>
+                            <Button variant='contained' color='primary' onClick={(e) => descargaExcel()}style={{ fontSize: '12px' }}>Descargar</Button>
                         </div>
 
                         <br></br>

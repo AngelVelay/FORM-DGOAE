@@ -1,439 +1,418 @@
+import fs from "fs";
+import { v4 as uuidv4 } from "uuid";
+import dotenv from "dotenv";
+import express from "express";
+import path from "path";
+import cors from "cors";
+import bodyParser from "body-parser";
+import conectarDB from "../backend/config/db.js";
+import Form from "../backend/models/Form.js";
+import AllAccess from "./models/AllAcces.js";
+import Response from "./models/Response.js";
 
-const fs = require('fs');
-const express = require("express");
-const path = require("path");
-const { v4: uuidv4 } = require('uuid');
 const appback = express();
 
-var cors = require('cors'); // CORS -> Cross Origin Resource Sharing
+dotenv.config();
 
-var bodyParser = require('body-parser');
-
-
+conectarDB();
 appback.use(bodyParser.json());
 appback.use(cors());
 appback.use(function (req, res, next) {
-    res.header("Access-Control-Allow-Origin", "*", "http://localhost:3000/*");
-    res.header("Access-Control-Allow-Headers", "Origin, X-Request-With, Content-Type, Accept");
-    next();
-
+  res.header("Access-Control-Allow-Origin", "*", "http://localhost:3000/*");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Request-With, Content-Type, Accept"
+  );
+  next();
 });
 
 appback.get(`/data`, async (req, res) => {
-    var docID = req.query.doc_id;
-    var userID = req.query.username;
+  var docID = req.query.doc_id;
+  var userID = req.query.username;
 
-    var filename = `${docID}.json`;
-
-    const diretoryPath = path.join(__dirname, '/files/', userID, '/', filename);
-
-    console.log(docID, userID);
-    console.log(diretoryPath);
-
-    fs.readFile(diretoryPath, (err, data) => {
-        if (err) {
-            console.log('File not found')
-            throw err;
-        }
-        let ques_data = JSON.parse(data);
-        console.log(req.params.doc_id, ques_data);
-        res.send(ques_data);
-    });
+  try {
+    const doc = await Form.findOne({ IdPregunta: docID });
+    // const doc = await Form.findOne({ userID });
+    if (!doc) {
+      res.status(404).send("File not found");
+      return;
+    }
+    res.send(doc);
+  } catch (err) {
+    console.log(err);
+  }
 });
-
 
 appback.get(`/get_all_filenames_by_user`, async (req, res) => {
+  var userID = req.query.username;
+  // const document_id = req.query.doc_id;
 
-    var userID = req.query.username;
-
-    const directory = path.join(__dirname, '/files/', userID);
-
-    if (!fs.existsSync(directory)) {
-        res.json([]);
-        return;
-        //fs.mkdirSync(directory);
+  Form.find({ email:userID }, (err, files) => {
+    if (err) {
+      console.error(err);
+      res.json([]);
+    } else {
+      let js = files.map((file) => {
+        return {
+          name: file.document_name,
+          formId: file.IdPregunta,
+          description: file.document_description,
+          questions: file.questions,
+          time: file.fechaEntrega,
+        };
+      });
+      res.json(js);
     }
-
-    var filenames = fs.readdirSync(directory);
-
-    console.log(filenames);
-    let js = [];
-    filenames.forEach((f, index) => {
-
-        if (f.endsWith(".json")) {
-
-            js.push({
-                filename: f,
-                name: JSON.parse(fs.readFileSync(directory + '/' + f)).document_name,
-                time: fs.statSync(directory + '/' + f).birthtimeMs
-            });
-        }
-
-
-    });
-
-    res.json(js);
+  });
 });
 
-/***/
+appback.get("/getform", async (req, res) => {
+  const globalID = req.query.global_id;
 
-
-appback.get(`/getform`, async (req, res) => {
-
-
-    var globalID = req.query.global_id;
-    console.log("Loading form " + globalID + " ...");
-    var filenameAll = `allaccess.json`;
-    const diretoryPath = path.join(__dirname, '/files/');
-
-    console.log("Leyendo All Access");
-    fs.readFile(diretoryPath + filenameAll, (err, data) => {
-
-        var file = "";
-        var user = "";
-        var isEnabled = false;
-        if (err) {
-
-            console.log('File Allaccess not found')
-            throw err;
-        }
-        let accessfile = JSON.parse(data);
-        accessfile.forms.forEach(element => {
-            if (globalID === element.gid) {
-                user = element.email;
-                file = element.file;
-                isEnabled = element.enable;
-            }
-
-        });
-
-        if (!isEnabled) {
-            res.send({ document_name: globalID, document_description: "Cuestionario no habilitado", questions: [] });
-            return;
-        }
-        var filename = `${file}.json`;
-        const formPath = path.join(__dirname, '/files/', user, '/', filename);
-
-
-        fs.readFile(formPath, (err, data) => {
-            if (err) {
-                console.log('Form not found')
-                throw err;
-            }
-            let ques_data = JSON.parse(data);
-
-            console.log("Loaded form " + globalID);
-            res.send(ques_data);
-        });
-
-    });
-
+  try {
+    const allAccess = await AllAccess.findOne({ gid: globalID });
+    if (allAccess.enable === true) {
+      const form = await Form.findOne({ IdPregunta: allAccess.IdPregunta });
+      res.send({
+        document_name: form.document_name,
+        document_description: form.file,
+        questions: form.questions,
+      });
+    } else {
+      const form = await Form.findOne({ IdPregunta: allAccess.IdPregunta });
+      res.send({
+        document_name: form.document_name,
+        document_description: "Cuestionario no habilitado",
+        questions: [],
+      });
+      return;
+    }
+  } catch (err) {
+    res.status(500).send("Error while loading form");
+  }
 });
-
 
 appback.get(`/getGlobalID`, async (req, res) => {
+  const gid = req.query.id;
 
-
-    var fid = req.query.id;
-    console.log("Geting gid " + fid + " ...");
-    var filenameAll = `allaccess.json`;
-    const diretoryPath = path.join(__dirname, '/files/');
-
-    console.log("Leyendo All Access");
-    fs.readFile(diretoryPath + filenameAll, (err, data) => {
-
-        var globalID = "";
-        var user = "";
-
-        if (err) {
-            console.log('File Allaccess not found')
-            throw err;
-        }
-        let accessfile = JSON.parse(data);
-
-        accessfile.forms.forEach(element => {
-            if (fid === element.file) {
-                user = element.email;
-                globalID = element.gid;
-
-
-
-            }
-
-        });
-        console.log({ "gid": globalID })
-        res.send({ "gid": globalID });
-
-
-
-    });
-
+  try {
+    const result = await AllAccess.findOne({ IdPregunta: gid });
+    if (!result) {
+      return;
+    }
+    res.json({ gid: result.gid });
+  } catch (err) {
+    console.log(err);
+    res.status(500).send({ error: "Internal Server Error" });
+  }
 });
 
-appback.post(`/add_question`, async (req, res) => {
+appback.post("/add_question", async (req, res) => {
+  const user_id = req.query.username;
+  const document_id = req.query.doc_id;
+  const document_data = req.body;
 
+  const form = await Form.findOne({ IdPregunta: document_id });
 
-    console.log("ADDING QUESTION");
-    var docID = req.query.doc_id;
-    var userID = req.query.username;
-    const directory = path.join(__dirname, '/files/', userID);
-    if (!fs.existsSync(directory)) {
-        fs.mkdirSync(directory);
-    }
-
-    var filenameAll = `allaccess.json`;
-    const accessDiretoryPath = path.join(__dirname, '/files/');
-
-    let find_eleme = false;
-    let nelem = 1;
-
-    let dataAccess = fs.readFileSync(accessDiretoryPath + filenameAll);
-    let accessfile = JSON.parse(dataAccess);
-    console.log("ACCESS INFO: ", accessfile);
-    accessfile.forms.forEach(element => {
-
-        if (docID === element.file)
-            find_eleme = true;
-        nelem++;
+  if (!form) {
+    const document = new Form({
+      email: user_id,
+      IdPregunta: document_id,
+      document_name: document_data.document_name,
+      document_description: document_data.document_description,
+      questions: document_data.questions,
     });
-    console.log(accessfile, nelem, find_eleme);
+    await document.save();
+    res.json(document);
+  } else {
+    const document = new Form({
+      email: form.email,
+      IdPregunta: form.IdPregunta,
+      document_name: document_data.document_name,
+      document_description: document_data.document_description,
+      questions: document_data.questions,
+    });
+    await form.updateOne({
+      document_name: document_data.document_name,
+      document_description: document_data.document_description,
+      questions: document_data.questions,
+    });
+    res.json(document);
+  }
 
-    if (!find_eleme) {
-        let new_data_elem = {};
-        new_data_elem.email = userID;
-        new_data_elem.gid = uuidv4();
-        new_data_elem.file = docID;
-        new_data_elem.enable = false;
-        new_data_elem.filename = nelem;
-        accessfile.forms.push(new_data_elem);
-        let wdata = JSON.stringify(accessfile);
-        fs.writeFileSync(accessDiretoryPath + filenameAll, wdata);
-    }
-
-    console.log("fin");
-    console.log(directory);
-    var docs_data = req.body;
-    console.log(docs_data, docID);
-    console.log(docs_data, userID);
-    let data = JSON.stringify(docs_data);
-    fs.writeFileSync(`${directory}/${docID}.json`, data);
-
-    res.send();
-
+  const allAccess = await AllAccess.findOne({ IdPregunta: document_id });
+  if (!allAccess) {
+    const newForm = new AllAccess({
+      email: user_id,
+      gid: uuidv4(),
+      IdPregunta: document_id,
+      enable: false,
+      IdRespuesta: uuidv4(),
+    });
+    await newForm.save();
+  }
 });
 
-appback.post('/student_response', async (req, res) => {
+appback.post("/student_response", async (req, res) => {
+  const docs_data = req.body;
+  const globalID = req.query.doc_id;
 
-    var docs_data = req.body;
-    var globalID = docs_data.global_id;
-
-    var filenameAll = `allaccess.json`;
-
-    const diretoryPath = path.join(__dirname, '/files/');
-
-    console.log("Dir  " + diretoryPath + filenameAll);
-    var exelPath = "";
-
-    var file = "";
-    var user = "";
-    var id = "";
-
-    fs.readFile(diretoryPath + filenameAll, (err, data) => {
-
-
-        if (err) {
-            console.log('File not found allaccess')
-            throw err;
-        }
-        let accessfile = JSON.parse(data);
-        accessfile.forms.forEach(element => {
-
-            console.log(element);
-            if (globalID === element.gid) {
-                user = element.email;
-                file = element.filename;
-                id = element.file;
-            }
-
-        });
-
-        var filename = `${file}.json`;
-        console.log("fileeee", filename);
-
-        console.log("path", exelPath);
-        const fdirectory = path.join(path.join(__dirname, '/files/', user, '/responses'));
-        if (!fs.existsSync(fdirectory)) {
-            fs.mkdirSync(fdirectory);
-        }
-
-        fs.readFile(path.join(__dirname, '/files/', user, '/responses/', filename), (err, data) => {
-
-            if (err) {
-                console.log(err);
-                console.log("Creating File");
-                let data = JSON.stringify({ responses: docs_data.answer_data, columns: docs_data.column, doc_name: docs_data.doc_name });
-                fs.writeFileSync(path.join(__dirname, '/files/', user, '/responses/', filename), data);
-                res.send();
-                return;
-            }
-            let ques_data = JSON.parse(data);
-            ques_data.responses.push(docs_data.answer_data[0]);
-            let jsondata = JSON.stringify(ques_data);
-            fs.writeFileSync(path.join(__dirname, '/files/', user, '/responses/', filename), jsondata);
-
-            res.send();
-        });
+  try {
+    const response = await Response.findOne({
+      doc_name:docs_data.doc_name,
     });
+    if (!response) {
+      const newResponse = new Response({
+        gid: docs_data.global_id,
+        IdRespuesta: docs_data.IdRespuesta,
+        responses: docs_data.answer_data,
+        columns: docs_data.column,
+        doc_name: docs_data.doc_name,
+      });
+      await newResponse.save();
+      console.log("Respuesta Guardada");
+      console.log(docs_data);
+    } else {
+      response.responses.push(docs_data.answer_data[0]);
+    
+      await response.save();
+      res.sendStatus(200);
+    }
+ 
+  } catch (err) {
+    console.error(err);
+    res.sendStatus(500);
+  }
 
+  //   const response = await Response.findOne({
+  //     gid: globalID,
+  //   });
+  //   if (!response) {
+  //     const newResponse = new Response({
+  //       gid: globalID,
+  //       IdRespuesta: docs_data.IdRespuesta,
+  //       responses: docs_data.answer_data,
+  //       columns: docs_data.column,
+  //       doc_name: docs_data.doc_name,
+  //       doc_description:docs_data.answer_data[0],
 
+  //     });
+  //     await newResponse.save();
+  //     console.log("Respuesta Guardada")
+
+  //   } else {
+  //     response.responses.push(docs_data.answer_data[0]);
+  //     await response.save();
+  //     console.log("Respuesta Guardada")
+  //   }
+
+  // } catch (err) {
+  //   console.error(err);
+  //   res.sendStatus(500);
+  // }
 });
 
 function isObject(obj) {
-    return obj !== undefined && obj !== null && obj.constructor == Object;
+  return obj !== undefined && obj !== null && obj.constructor == Object;
 }
 
 function isEmptyObject(obj) {
-    return !Object.keys(obj).length;
+  return !Object.keys(obj).length;
 }
 
 appback.get(`/getExcel`, async (req, res) => {
+  const fid = req.query.id;
+  console.log(fid)
 
-    var fid = req.query.id;
-    console.log("Geting gid " + fid + " ...");
-    var filenameAll = `allaccess.json`;
-    const diretoryPath = path.join(__dirname, '/files/');
+  try {
+    const accessfile = await AllAccess.findOne({ file: fid }).exec();
 
-    console.log("Leyendo All Access");
-    fs.readFile(diretoryPath + filenameAll, (err, data) => {
+    if (!accessfile) {
+      res.send(null);
+      return;
+    }
 
-        var globalID = "";
-        var user = "";
-        var filename = "";
+    const user = accessfile.email;
+    const filename = accessfile.filename;
 
-        if (err) {
-            console.log('File Allaccess not found')
-            throw err;
-        }
-        let accessfile = JSON.parse(data);
-        accessfile.forms.forEach(element => {
-            if (fid === element.file) {
-                user = element.email;
-                globalID = element.gid;
-                filename = element.filename;
-            }
+    const response = await Response.findOne({ filename }).exec();
 
-        });
+    if (!response) {
+      res.send(null);
+      return;
+    }
 
-        fs.readFile(path.join(__dirname, '/files/', user, '/responses/', filename + ".json"), (err, data) => {
+    const json_responses = response.responses;
 
-            if (err) {
-                console.log("0 responses", data); res.send(null); return;
-            }
-
-            let json_responses = JSON.parse(data);
-
-            res.json(json_responses.responses);
-
-        });
-
-
-    });
+    res.json(json_responses);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Internal Server Error");
+  }
 });
 
 appback.post(`/enable_disable`, async (req, res) => {
+  var docs_data = req.body;
+  var fid = docs_data.fid;
+  var isEnabled = docs_data.enabled;
 
-    var docs_data = req.body;
-    var fid = docs_data.fid;
-    var isEnabled = docs_data.enabled;
+  var filenameAll = `allaccess.json`;
+  const diretoryPath = path.join(__dirname, "/files/");
 
-    var filenameAll = `allaccess.json`;
-    const diretoryPath = path.join(__dirname, '/files/');
+  let accessfile = JSON.parse(fs.readFileSync(diretoryPath + filenameAll));
+  accessfile.forms.map((element) => {
+    if (fid === element.file) {
+      element.enable = isEnabled;
+    }
+  });
 
-    console.log("Leyendo All Access");
-
-
-    let accessfile = JSON.parse(fs.readFileSync(diretoryPath + filenameAll));
-    console.log(accessfile);
-    accessfile.forms.map(element => {
-        if (fid === element.file) {
-            element.enable = isEnabled;
-        }
-
-    });
-
-    console.log(accessfile);
-
-    let jsondata = JSON.stringify(accessfile);
-    fs.writeFileSync(diretoryPath + filenameAll, jsondata);
-    res.send();
-})
-
-appback.get(`/getResponses`, async (req, res) => {
-
-
-    var fid = req.query.id;
-    console.log("Geting gid " + fid + " ...");
-    var filenameAll = `allaccess.json`;
-    const diretoryPath = path.join(__dirname, '/files/');
-
-    console.log("Leyendo All Access");
-    fs.readFile(diretoryPath + filenameAll, (err, data) => {
-
-        var globalID = "";
-        var user = "";
-        var filename = "";
-        var isEnabled = false;
-        if (err) {
-            console.log('File Allaccess not found')
-            throw err;
-        }
-        let accessfile = JSON.parse(data);
-        accessfile.forms.forEach(element => {
-            if (fid === element.file) {
-                user = element.email;
-                globalID = element.gid;
-                filename = element.filename;
-                isEnabled = element.enable;
-            }
-        });
-
-        var json_responses = { "rsize": 0, "resp": [], "columns": [] };
-        let s_response = {};
-        let s_quest = JSON.parse(fs.readFileSync(path.join(__dirname, '/files/', user, '/', fid + ".json")));
-
-        fs.readFile(
-            path.join(__dirname, '/files/', user, '/responses/', filename + ".json"),
-            (err, data) => {
-                if (err) {
-                    console.log('File Responeses not found')
-                    res.send(json_responses);
-                    return;
-                }
-                s_response = JSON.parse(data)
-
-                if (isEmptyObject(s_response)) {
-                    res.send(json_responses);
-                    return;
-                }
-
-                console.log("RESPUESTAS  ", s_response);
-
-                console.log("PREGUNTAS  ", s_quest);
-
-                json_responses.rsize = s_response.responses.length;
-                json_responses.resp = s_response.responses;
-                json_responses.columns = s_response.columns;
-                json_responses.doc_name = s_response.doc_name;
-                json_responses.questions = s_quest;
-                json_responses.isEnabled = isEnabled;
-                res.send(json_responses);
-            });
-
-    });
-
+  let jsondata = JSON.stringify(accessfile);
+  fs.writeFileSync(diretoryPath + filenameAll, jsondata);
+  res.send();
 });
 
+// appback.get(`/getResponses`, async (req, res) => {
+//   const fileId = req.query.id;
+//   const user_id = req.query.username;
+//   const document_id = req.query.doc_id;
+//   const document_data = req.body;
+//   console.log(`Getting responses for fileId ${fileId} ...`);
+//   console.log(req.query)
+
+//   try {
+//     const allAccess = await AllAccess.findOne({ IdPregunta: fileId });
+//     // if (!allAccess) {
+//     //   console.log(`AllAccess not found for fileId ${fileId}`);
+//     //   res.send({ rsize: 0, resp: [], columns: [] });
+//     //   return;
+//     // }
+
+//     const user = allAccess.email;
+//     const globalId = allAccess.gid;
+//     const fileName = allAccess.IdRespuesta;
+//     const isEnabled = allAccess.enable;
+
+//     const responses = await Response.findOne({ IdRespuesta: fileName });
+//     if (!responses) {
+//       console.log(`Responses not found for fileId ${fileId}`);
+//       res.send({ rsize: 0, resp: [], columns: [] });
+//       return;
+//     }
+
+//     const questions = await Form.findOne({ IdRespuesta: fileName });
+//     if (!questions) {
+//       console.log(`Form not found for fileId ${fileId}`);
+//       res.send({
+//         rsize: responses.responses.length,
+//         resp: responses.responses,
+//         columns: responses.columns,
+//         doc_name: responses.doc_name,
+//         questions: [],
+//         isEnabled: isEnabled,
+//       });
+//       return;
+//     }
+
+//     console.log("RESPUESTAS: ", responses);
+//     console.log("PREGUNTAS: ", questions);
+
+//     res.send({
+//       rsize: responses.responses.length,
+//       resp: responses.responses,
+//       columns: responses.columns,
+//       doc_name: responses.doc_name,
+//       questions: questions.questions,
+//       isEnabled: isEnabled,
+//     });
+//   } catch (err) {
+//     console.log("Error while getting responses", err);
+//     res.status(500).send("Error while getting responses");
+//   }
+// });
+
+// appback.get(`/getResponses`, async (req, res) => {
+//   try {
+//     const fid = req.query.id;
+//     console.log("Getting gid " + fid + " ...");
+//     console.log(req.body)
+
+//     const accessfile = await AllAccess.findOne({ IdRespuesta: fid });
+
+//     // if (!accessfile) {
+//     //   console.log("File Allaccess not found");
+//     //   res.send({ rsize: 0, resp: [], columns: [] });
+//     //   return;
+//     // }
+
+   
+//     // const filename = accessfile.filename;
+//     // const isEnabled = accessfile.enable;
+
+//     // const s_response = await Response.findOne({ doc_name: filename });
+
+//     // if (!s_response) {
+//     //   console.log("File Responses not found");
+//     //   res.send({ rsize: 0, resp: [], columns: [] });
+//     //   return;
+//     // }
+
+//     // console.log("RESPUESTAS  ", s_response);
+
+//     // const json_responses = {
+//     //   rsize: s_response.responses.length,
+//     //   resp: s_response.responses,
+//     //   columns: s_response.columns,
+//     //   doc_name: s_response.doc_name,
+//     //   isEnabled: isEnabled,
+//     // };
+
+//     // res.send(json_responses);
+//   } catch (err) {
+//     console.log(err);
+//     res.send({ rsize: 0, resp: [], columns: [] });
+//   }
+// });
+
+appback.get(`/getResponses`, async (req, res) => {
+  try {
+    const fid = req.query.id;
+
+    const accessfile = await Form.findOne({ IdPregunta: fid });
+
+    if (!accessfile) {
+      res.send({ rsize: 0, resp: [], columns: [] });
+      return;
+    }
+
+    const user = accessfile.email;
+    const globalID = accessfile.gid;
+    const filename = accessfile.document_name;
+    const isEnabled = accessfile.enable;
+
+    const s_response = await Response.findOne({ doc_name: filename });
+
+    // if (!s_response) {
+    //   console.log("File Responeses not found");
+    //   res.send({ rsize: 0, resp: [], columns: [] });
+    //   return;
+    // }
 
 
-appback.listen(9000, () => { console.log("Express server is running port number 9000") })
+    const json_responses = {
+      rsize: s_response.responses.length,
+      resp: s_response.responses,
+      columns: s_response.columns,
+      doc_name: s_response.doc_name,
+      isEnabled: isEnabled,
+    };
 
+    res.send(json_responses);
+  } catch (err) {
+    console.log(err);
+    res.send({ rsize: 0, resp: [], columns: [] });
+  }
+});
+
+appback.listen(9000, () => {
+  console.log("Express server is running port number 9000");
+});
