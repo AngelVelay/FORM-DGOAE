@@ -8,6 +8,8 @@ import ViewUserForm from "./components/ViewUserForm";
 import LoginButton from "./auth/Login";
 import Submitted from "./components/Submitted";
 import SaveForm from "./components/SaveForm";
+import Credits from "./pages/Credits";
+import Contact from "./pages/Contact";
 
 function App() {
   const { isAuthenticated } = useAuth0();
@@ -21,6 +23,8 @@ function App() {
               <Route path="/form/:id" element={<Forms />} />
               <Route path="/viewresponse/:id" element={<ViewUserForm />} />
               <Route path="/saveform/:id" element={<SaveForm />} />
+              <Route path="/credits" element={<Credits />} />
+              <Route path="/contact" element={<Contact />} />
             </Routes>
           </Router>
         </>

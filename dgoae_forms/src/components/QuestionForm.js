@@ -38,6 +38,7 @@ function QuestionForm() {
 
   const navigate = useNavigate();
   const [isEncrypt, setIsEncrypt] = useState(false);
+  const [isRequired, setIsRequired] = useState(false);
   const [questions, setQuestions] = useState([
     {
       questionText: "Pregunta 1",
@@ -48,7 +49,6 @@ function QuestionForm() {
       points: 0,
       open: true,
       required: false,
-      isEncrypt: false,
     },
   ]);
 
@@ -61,15 +61,14 @@ function QuestionForm() {
         `http://localhost:9000/data?username=${user.name}&doc_id=${id}`
       );
       var question_data = request.data.questions;
-      //var question_data = request.data;
-      console.log(question_data);
 
       var doc_name = request.data.document_name;
       var doc_desc = request.data.document_description;
-      console.log(doc_name, doc_desc);
+      var isEncrypt = request.data.isEncrypted;
       setDocName(doc_name);
       setDocDesc(doc_desc);
       setQuestions(question_data);
+      setIsEncrypt(isEncrypt);
 
       dispatch({
         type: actionTypes.SET_DOC_NAME,
@@ -85,6 +84,10 @@ function QuestionForm() {
         type: actionTypes.SET_QUESTIONS,
         questions: question_data,
       });
+      dispatch({
+        type: actionTypes.SET_DOC_ENCRYPT,
+        isEncrypted: isEncrypt,
+      });
     }
 
     data_adding();
@@ -99,7 +102,10 @@ function QuestionForm() {
   };
 
   const decryptInformation = (wordTextCipher) => {
-    var bytes = CryptoJS.AES.decrypt(wordTextCipher, process.env.SECRET_KEY);
+    var bytes = CryptoJS.AES.decrypt(
+      wordTextCipher,
+      "@DGOAE_3NCRYPT_1NF0RM4T10N"
+    );
     var textoPlano = bytes.toString(CryptoJS.enc.Utf8);
     return textoPlano;
   };
@@ -165,14 +171,12 @@ function QuestionForm() {
     var reqQuestion = [...questions];
     reqQuestion[i].required = !reqQuestion[i].required;
     setQuestions(reqQuestion);
-    setIsEncrypt(reqQuestion[i].required)
   }
 
-  function sensitiveInformationQuestion(i) {
-    var reqQuestion = [...questions];
-    reqQuestion[i].isEncrypt = !reqQuestion[i].isEncrypt;
-    setQuestions(reqQuestion);
-  }
+  const sensitiveInformationQuestion = () => {
+    setIsEncrypt(!isEncrypt);
+    console.log(isEncrypt);
+  };
 
   function addMoreQuestionField() {
     expandCloseAll();
@@ -184,7 +188,6 @@ function QuestionForm() {
         options: [{ optionText: "Option 1" }],
         open: true,
         required: false,
-        isEncrypt: false,
       },
     ]);
   }
@@ -300,11 +303,10 @@ function QuestionForm() {
 
   const encryptSensitiveInformation = (i) => {
     var reqQuestion = [...questions];
-    var encryptInfo = encryptInformation(JSON.stringify(reqQuestion[i]))
-      console.log("Encripta"+encryptInfo)
-      setQuestions(encryptInfo);
-      
-  }
+    var encryptInfo = encryptInformation(JSON.stringify(reqQuestion[i]));
+    console.log("Encripta" + encryptInfo);
+    setQuestions(encryptInfo);
+  };
 
   async function commitToDB() {
     dispatch({
@@ -312,20 +314,21 @@ function QuestionForm() {
       questions: questions,
     });
 
+    dispatch({
+      type: actionTypes.SET_DOC_ENCRYPT,
+      isEncrypted: isEncrypt,
+    });
+
     try {
       const response = await axios.post(
         `http://localhost:9000/add_question?username=${user.name}&doc_id=${id}`,
         {
-         
           document_name: documentName,
           document_description: documentDescription,
           questions: questions,
-        },
-
-        
+          isEncrypted: isEncrypt,
+        }
       );
-
-      
     } catch (err) {
       console.log(err);
     }
@@ -647,9 +650,25 @@ function QuestionForm() {
                                 >
                                   <BsTrash />
                                 </IconButton>
-                                <div className="column_switch">
+                                <FormControlLabel
+                                  control={
+                                    <Switch
+                                      color="primary"
+                                      checked={questions[i].required ? true : false}
+                                      onClick={() => {
+                                        requiredQuestion(i);
+                                      }}
+                                      name="isEncrypted"
+                                    />
+                                  }
+                                  labelPlacement="start"
+                                  label="Requerido"
+                                />
+                                {/* <div className="column_switch">
                                   <IconButton
-                                 
+                                    onClick={() => {
+                                      requiredQuestion(i);
+                                    }}
                                   >
                                     <span
                                       style={{
@@ -660,33 +679,12 @@ function QuestionForm() {
                                       Requerido
                                     </span>
                                     <Switch
-                                    checked={questions.isEncrypt}
                                       name="checked"
                                       color="primary"
-                                      onClick={() => {
-                                        requiredQuestion(i);
-                                      }}
                                     ></Switch>
                                   </IconButton>
-                                  {/* <IconButton>
-                                    <span
-                                      style={{
-                                        color: "#5f6368",
-                                        fontSize: "13px",
-                                      }}
-                                    >
-                                      Dato sensible
-                                    </span>
-                                    <Switch
-                                      checked={questions.isEncrypt}
-                                      name="checked"
-                                      color="primary"
-                                      onClick={() => {
-                                        sensitiveInformationQuestion(i);
-                                      }}
-                                    ></Switch>
-                                  </IconButton> */}
-                                </div>
+                                 
+                                </div> */}
                               </div>
                             </div>
                           </AccordionDetails>
@@ -842,23 +840,18 @@ function QuestionForm() {
                     setDocName(e.target.value);
                   }}
                 ></input>
-                <IconButton>
-                  <span
-                    style={{
-                      color: "#5f6368",
-                      fontSize: "13px",
-                    }}
-                  >
-                    Formulario con datos sensibles
-                  </span>
-                  <Switch
-                    name="checked"
-                    color="primary"
-                    onClick={() => {
-                      sensitiveInformationQuestion();
-                    }}
-                  ></Switch>
-                </IconButton>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      color="primary"
+                      checked={isEncrypt ? true : false}
+                      onChange={sensitiveInformationQuestion}
+                      name="isEncrypted"
+                    />
+                  }
+                  labelPlacement="start"
+                  label="El formulario contiene datos sensibles"
+                />
               </div>
               <input
                 type="text"
@@ -891,7 +884,7 @@ function QuestionForm() {
               onClick={commitToDB}
               startIcon={<SaveIcon />}
             >
-              Guardar
+              Guardar formulario
             </Button>
             {/* <Button
               variant="contained"

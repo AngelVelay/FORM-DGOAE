@@ -28,6 +28,11 @@ const formSchema = mongoose.Schema(
       trim: true,
       required: true,
     },
+    isEncrypted: {
+      type: Boolean,
+      trim: true,
+
+    },
     fechaEntrega: {
       type: Date,
       required: true,

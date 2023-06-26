@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "./Header.css";
 import { IconButton } from "@material-ui/core";
-import formimage from "../images/logoUNAM.png";
+import formimage from "../images/1.png";
 import SearchIcon from "@material-ui/icons/Search";
 import TextField from "@mui/material/TextField";
 import Autocomplete from "@mui/material/Autocomplete";
@@ -47,7 +47,7 @@ function Header() {
   return (
     <div className="header">
       <div className="header_info">
-        <TemporaryDrawer />
+        {/* <TemporaryDrawer /> */}
         <img
           src={formimage}
           alt="no img"
@@ -76,9 +76,9 @@ function Header() {
       
       </div>
       <div className="header_right">
-        <IconButton>
+        {/* <IconButton>
           <AppsIcon />
-        </IconButton>
+        </IconButton> */}
         <LogoutButton />
         <IconButton>
           <Avatar src={user.picture} />

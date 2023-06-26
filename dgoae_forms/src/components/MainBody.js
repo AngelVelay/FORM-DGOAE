@@ -8,6 +8,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { useAuth0 } from "@auth0/auth0-react";
 import QuestionForm from "./QuestionForm";
+import Footer from "./Footer";
 
 
 function MainBody({searchForm}) {
@@ -30,7 +31,6 @@ function MainBody({searchForm}) {
         `http://localhost:9000/get_all_filenames_by_user?username=${user.name}`
       );
       let filenames = request.data;
-      console.log("Hisdfas");
       setFiles(filenames);
     }
 
@@ -38,7 +38,8 @@ function MainBody({searchForm}) {
   }, []);
 
   return (
-    <div className="main_body">
+    <div>
+      <div className="main_body">
       <div className="main_body_top">
         <div
           className="main_body_top_left"
@@ -95,6 +96,9 @@ function MainBody({searchForm}) {
           </div>
         ))}
       </div>
+      
+    </div>
+    <Footer/>
     </div>
   );
 }

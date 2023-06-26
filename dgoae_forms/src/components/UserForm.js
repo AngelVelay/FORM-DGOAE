@@ -1,9 +1,15 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Button, Typography } from "@material-ui/core";
 import { useNavigate, useParams } from "react-router-dom";
+import ReCAPTCHA from "react-google-recaptcha";
+import Alert from "@mui/material/Alert";
+
+import CryptoJS from "crypto-js";
+
 import "./UserForm.css";
 
 import axios from "axios";
+import { useAuth0 } from "@auth0/auth0-react";
 
 function UserForm() {
   const { global_id } = useParams();
@@ -14,16 +20,37 @@ function UserForm() {
 
   const [doc_name, setDocName] = useState("Untitled Document");
   const [doc_desc, setDocDesc] = useState("Add Description");
+  const [captchaVerification, setcaptchaVerification] = useState(false);
   const [questions, setQuestions] = useState([]);
+  const [isEncrypted, setIsEncrypted] = useState({});
+  const [isEnabled, setisEnabled] = useState(null);
+
+  const encryptInformation = (wordTextPlain) => {
+    var textoCifrado = CryptoJS.AES.encrypt(
+      JSON.stringify(wordTextPlain),
+      "@DGOAE_3NCRYPT_1NF0RM4T10N"
+    );
+    return textoCifrado.toString();
+  };
+
+  const captcha = useRef(null);
+
+  const onChange = () => {
+    if (captcha.current.getValue()) {
+      setcaptchaVerification(true);
+    }
+  };
 
   useEffect(() => {
     async function getForm() {
       var request = await axios.get(
         `http://localhost:9000/getform?global_id=${global_id}`
       );
+      console.log(request.data.questions);
       var question_data = request.data.questions;
       var doc_name = request.data.document_name;
       var doc_desc = request.data.document_description;
+      var isEncrypted = request.data.isEncrypted;
 
       question_data.map((q, qindex) => {
         answer.push({
@@ -36,11 +63,11 @@ function UserForm() {
         quest_excel.push({ header: q.questionText, key: q.questionText });
       });
 
+      setIsEncrypted(isEncrypted);
       setDocName(doc_name);
       setDocDesc(doc_desc);
       setQuestions(question_data);
     }
-
     getForm();
   }, []);
 
@@ -56,7 +83,7 @@ function UserForm() {
     console.log(answer);
   }
 
-  function selectInput(que, option) {
+  function selectInput(que, option, e) {
     setAnswer(answer);
     console.log(que, option);
     var k = answer.findIndex((ele) => ele.question === que);
@@ -68,7 +95,6 @@ function UserForm() {
   function selectCheck(que, option, e) {
     setAnswer(answer);
     console.log(e, que, option);
-
     var d = [];
     var k = answer.findIndex((ele) => ele.question === que);
     if (answer[k].answer) {
@@ -80,24 +106,52 @@ function UserForm() {
       var n = d.findIndex((el) => el.option === option);
       d.splice(n, 1);
     }
+
     answer[k].answer = d.join(",");
     setAnswer(answer);
     console.log(answer);
   }
 
+
+
   function submit() {
+    // questions.map((ele) => {
+    //   if (ele.required === true) {
+    //     var k = answer.findIndex((el) => el.question === ele.questionText);
+    //     if (k === -1 || answer[k].answer.trim() === "") {
+    //       alert("Preguntas no respondidas");
+    //     } else {
+    //       axios
+    //         .post(`http://localhost:9000/student_response`, {
+    //           global_id: global_id,
+    //           column: quest_excel,
+    //           doc_name: doc_name,
+    //           answer_data: [post_answer_data],
+    //         })
+    //         .then(() => {
+    //           navigate("/submitted/" + global_id);
+    //         })
+    //         .catch((error) => {
+    //           console.error("Error al enviar la respuesta:", error);
+    //         });
+    //     }
+    //   }
+    // });
+
     answer.map((ele) => {
-      post_answer_data[ele.question] = ele.answer;
+      if (isEncrypted === true) {
+        post_answer_data[ele.question] = encryptInformation(ele.answer);
+      } else {
+        post_answer_data[ele.question] = ele.answer;
+      }
     });
 
     axios.post(`http://localhost:9000/student_response`, {
-      
       global_id: global_id,
       column: quest_excel,
       doc_name: doc_name,
       answer_data: [post_answer_data],
     });
-
     navigate("/submitted/" + global_id);
   }
 
@@ -121,7 +175,16 @@ function UserForm() {
                     paddingBottom: "8px",
                   }}
                 >
-                  {qindex + 1}. {question.questionText}
+                  <div className="flex justify-between items-center">
+                    <span className="mr-2">
+                      {qindex + 1}. {question.questionText}
+                    </span>
+                    {question.required ? (
+                      <label className="text-red-500">
+                        La pregunta es requerida
+                      </label>
+                    ) : null}
+                  </div>
                 </Typography>
                 {question.options.map((option, index) => (
                   <div key={index} style={{ marginBottom: "5px" }}>
@@ -208,20 +271,43 @@ function UserForm() {
                   paddingBottom: "8px",
                 }}
               >
-                Comunicate con el propietario para habilitar el formulario.
+                Comunicate con el administrador para habilitar el formulario.
               </Typography>
             </div>
           )}
 
+          {}
+
+          <div className="recaptcha">
+            <ReCAPTCHA
+              ref={captcha}
+              sitekey="6LczbcwmAAAAAIrxDQ9f4j-Il98VaYtEBIG60AxL"
+              onChange={onChange}
+            />
+          </div>
+
           <div className="user_form_submit">
             <Button
+              disabled={!captchaVerification}
               variant="contained"
               color="primary"
               onClick={submit}
               style={{ fontSize: "14px" }}
             >
-              Guardar
+              Guardar respuesta
             </Button>
+
+            {/* {captchaVerification ? (
+              <Button
+                disabled = {captchaVerification}
+                variant="contained"
+                color="primary"
+                onClick={submit}
+                style={{ fontSize: "14px" }}
+              >
+                Guardar respuesta
+              </Button>
+            ) : null} */}
           </div>
 
           <div className="user_footer">DGOAE-FORMS</div>

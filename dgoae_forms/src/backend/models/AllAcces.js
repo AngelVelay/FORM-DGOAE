@@ -15,6 +15,11 @@ const allAccessSchema = mongoose.Schema({
     type: Boolean,
     required: true,
   },
+  isEncrypted: {
+    type: Boolean,
+    trim: true,
+
+  },
   IdRespuesta: {
     type: String,
     required: true,

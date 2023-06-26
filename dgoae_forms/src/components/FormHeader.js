@@ -1,6 +1,6 @@
 import React from "react";
 
-import formimage from "../images/logoUNAM.png";
+import formimage from "../images/1.png";
 import { FiStar, FiSettings } from "react-icons/fi";
 import { AiOutlineEye } from "react-icons/ai";
 import { IconButton } from "@material-ui/core";

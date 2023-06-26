@@ -9,6 +9,7 @@ import conectarDB from "../backend/config/db.js";
 import Form from "../backend/models/Form.js";
 import AllAccess from "./models/AllAcces.js";
 import Response from "./models/Response.js";
+import CryptoJS from "crypto-js";
 
 const appback = express();
 
@@ -45,9 +46,8 @@ appback.get(`/data`, async (req, res) => {
 
 appback.get(`/get_all_filenames_by_user`, async (req, res) => {
   var userID = req.query.username;
-  // const document_id = req.query.doc_id;
 
-  Form.find({ email:userID }, (err, files) => {
+  Form.find({ email: userID }, (err, files) => {
     if (err) {
       console.error(err);
       res.json([]);
@@ -77,6 +77,7 @@ appback.get("/getform", async (req, res) => {
         document_name: form.document_name,
         document_description: form.file,
         questions: form.questions,
+        isEncrypted: form.isEncrypted,
       });
     } else {
       const form = await Form.findOne({ IdPregunta: allAccess.IdPregunta });
@@ -114,12 +115,30 @@ appback.post("/add_question", async (req, res) => {
 
   const form = await Form.findOne({ IdPregunta: document_id });
 
+  const encryptInformation = (wordTextPlain) => {
+    var textoCifrado = CryptoJS.AES.encrypt(
+      JSON.stringify(wordTextPlain),
+      "@DGOAE_3NCRYPT_1NF0RM4T10N"
+    );
+    return textoCifrado.toString();
+  };
+
+  const decryptInformation = (wordTextCipher) => {
+    var bytes = CryptoJS.AES.decrypt(
+      wordTextCipher,
+      "@DGOAE_3NCRYPT_1NF0RM4T10N"
+    );
+    var textoPlano = bytes.toString(CryptoJS.enc.Utf8);
+    return textoPlano;
+  };
+
   if (!form) {
     const document = new Form({
       email: user_id,
       IdPregunta: document_id,
       document_name: document_data.document_name,
       document_description: document_data.document_description,
+      isEncrypted: document_data.isEncrypted,
       questions: document_data.questions,
     });
     await document.save();
@@ -130,11 +149,14 @@ appback.post("/add_question", async (req, res) => {
       IdPregunta: form.IdPregunta,
       document_name: document_data.document_name,
       document_description: document_data.document_description,
+      isEncrypted: document_data.isEncrypted,
+
       questions: document_data.questions,
     });
     await form.updateOne({
       document_name: document_data.document_name,
       document_description: document_data.document_description,
+      isEncrypted: document_data.isEncrypted,
       questions: document_data.questions,
     });
     res.json(document);
@@ -147,6 +169,7 @@ appback.post("/add_question", async (req, res) => {
       gid: uuidv4(),
       IdPregunta: document_id,
       enable: false,
+      isEncrypted: false,
       IdRespuesta: uuidv4(),
     });
     await newForm.save();
@@ -154,12 +177,20 @@ appback.post("/add_question", async (req, res) => {
 });
 
 appback.post("/student_response", async (req, res) => {
+  const encryptInformation = (wordTextPlain) => {
+    var textoCifrado = CryptoJS.AES.encrypt(
+      JSON.stringify(wordTextPlain),
+      "@DGOAE_3NCRYPT_1NF0RM4T10N"
+    );
+    return textoCifrado.toString();
+  };
+
   const docs_data = req.body;
   const globalID = req.query.doc_id;
 
   try {
     const response = await Response.findOne({
-      doc_name:docs_data.doc_name,
+      doc_name: docs_data.doc_name,
     });
     if (!response) {
       const newResponse = new Response({
@@ -171,45 +202,18 @@ appback.post("/student_response", async (req, res) => {
       });
       await newResponse.save();
       console.log("Respuesta Guardada");
-      console.log(docs_data);
+
+
     } else {
       response.responses.push(docs_data.answer_data[0]);
-    
+
       await response.save();
       res.sendStatus(200);
     }
- 
   } catch (err) {
     console.error(err);
     res.sendStatus(500);
   }
-
-  //   const response = await Response.findOne({
-  //     gid: globalID,
-  //   });
-  //   if (!response) {
-  //     const newResponse = new Response({
-  //       gid: globalID,
-  //       IdRespuesta: docs_data.IdRespuesta,
-  //       responses: docs_data.answer_data,
-  //       columns: docs_data.column,
-  //       doc_name: docs_data.doc_name,
-  //       doc_description:docs_data.answer_data[0],
-
-  //     });
-  //     await newResponse.save();
-  //     console.log("Respuesta Guardada")
-
-  //   } else {
-  //     response.responses.push(docs_data.answer_data[0]);
-  //     await response.save();
-  //     console.log("Respuesta Guardada")
-  //   }
-
-  // } catch (err) {
-  //   console.error(err);
-  //   res.sendStatus(500);
-  // }
 });
 
 function isObject(obj) {
@@ -222,7 +226,7 @@ function isEmptyObject(obj) {
 
 appback.get(`/getExcel`, async (req, res) => {
   const fid = req.query.id;
-  console.log(fid)
+  console.log("Golbal" + fid);
 
   try {
     const accessfile = await AllAccess.findOne({ file: fid }).exec();
@@ -271,107 +275,7 @@ appback.post(`/enable_disable`, async (req, res) => {
   res.send();
 });
 
-// appback.get(`/getResponses`, async (req, res) => {
-//   const fileId = req.query.id;
-//   const user_id = req.query.username;
-//   const document_id = req.query.doc_id;
-//   const document_data = req.body;
-//   console.log(`Getting responses for fileId ${fileId} ...`);
-//   console.log(req.query)
 
-//   try {
-//     const allAccess = await AllAccess.findOne({ IdPregunta: fileId });
-//     // if (!allAccess) {
-//     //   console.log(`AllAccess not found for fileId ${fileId}`);
-//     //   res.send({ rsize: 0, resp: [], columns: [] });
-//     //   return;
-//     // }
-
-//     const user = allAccess.email;
-//     const globalId = allAccess.gid;
-//     const fileName = allAccess.IdRespuesta;
-//     const isEnabled = allAccess.enable;
-
-//     const responses = await Response.findOne({ IdRespuesta: fileName });
-//     if (!responses) {
-//       console.log(`Responses not found for fileId ${fileId}`);
-//       res.send({ rsize: 0, resp: [], columns: [] });
-//       return;
-//     }
-
-//     const questions = await Form.findOne({ IdRespuesta: fileName });
-//     if (!questions) {
-//       console.log(`Form not found for fileId ${fileId}`);
-//       res.send({
-//         rsize: responses.responses.length,
-//         resp: responses.responses,
-//         columns: responses.columns,
-//         doc_name: responses.doc_name,
-//         questions: [],
-//         isEnabled: isEnabled,
-//       });
-//       return;
-//     }
-
-//     console.log("RESPUESTAS: ", responses);
-//     console.log("PREGUNTAS: ", questions);
-
-//     res.send({
-//       rsize: responses.responses.length,
-//       resp: responses.responses,
-//       columns: responses.columns,
-//       doc_name: responses.doc_name,
-//       questions: questions.questions,
-//       isEnabled: isEnabled,
-//     });
-//   } catch (err) {
-//     console.log("Error while getting responses", err);
-//     res.status(500).send("Error while getting responses");
-//   }
-// });
-
-// appback.get(`/getResponses`, async (req, res) => {
-//   try {
-//     const fid = req.query.id;
-//     console.log("Getting gid " + fid + " ...");
-//     console.log(req.body)
-
-//     const accessfile = await AllAccess.findOne({ IdRespuesta: fid });
-
-//     // if (!accessfile) {
-//     //   console.log("File Allaccess not found");
-//     //   res.send({ rsize: 0, resp: [], columns: [] });
-//     //   return;
-//     // }
-
-   
-//     // const filename = accessfile.filename;
-//     // const isEnabled = accessfile.enable;
-
-//     // const s_response = await Response.findOne({ doc_name: filename });
-
-//     // if (!s_response) {
-//     //   console.log("File Responses not found");
-//     //   res.send({ rsize: 0, resp: [], columns: [] });
-//     //   return;
-//     // }
-
-//     // console.log("RESPUESTAS  ", s_response);
-
-//     // const json_responses = {
-//     //   rsize: s_response.responses.length,
-//     //   resp: s_response.responses,
-//     //   columns: s_response.columns,
-//     //   doc_name: s_response.doc_name,
-//     //   isEnabled: isEnabled,
-//     // };
-
-//     // res.send(json_responses);
-//   } catch (err) {
-//     console.log(err);
-//     res.send({ rsize: 0, resp: [], columns: [] });
-//   }
-// });
 
 appback.get(`/getResponses`, async (req, res) => {
   try {
@@ -391,13 +295,6 @@ appback.get(`/getResponses`, async (req, res) => {
 
     const s_response = await Response.findOne({ doc_name: filename });
 
-    // if (!s_response) {
-    //   console.log("File Responeses not found");
-    //   res.send({ rsize: 0, resp: [], columns: [] });
-    //   return;
-    // }
-
-
     const json_responses = {
       rsize: s_response.responses.length,
       resp: s_response.responses,
@@ -410,6 +307,34 @@ appback.get(`/getResponses`, async (req, res) => {
   } catch (err) {
     console.log(err);
     res.send({ rsize: 0, resp: [], columns: [] });
+  }
+});
+
+appback.get(`/getFormData`, async (req, res) => {
+  const document_id = req.query.doc_id;
+
+  try {
+
+    const form = await Form.findOne({ IdPregunta: document_id });
+    if (!form) {
+      console.log("Form not found");
+      res.send({
+        IdPregunta: form.IdPregunta,
+        document_name: form.document_name,
+        document_description: form.document_description,
+        isEncrypted: form.isEncrypted,
+      });
+    } else {
+      console.log("Form found");
+      res.send({
+        IdPregunta: form.IdPregunta,
+        document_name: form.document_name,
+        document_description: form.document_description,
+        isEncrypted: form.isEncrypted,
+      });
+    }
+  } catch (error) {
+    console.log(error);
   }
 });
 
